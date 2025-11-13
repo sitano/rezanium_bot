@@ -74,8 +74,7 @@ async function getDebt(tg) {
   const col = tg2col[tg];
 
   if (!col) {
-    console.error(`TG nickname ${tg} not found in mapping ${JSON.stringify(tg2col)}`);
-    return -99; // TODO
+    throw new Error(`tg account is not registered`);
   }
 
   const result = await client.spreadsheets.values.get({
@@ -86,8 +85,7 @@ async function getDebt(tg) {
   const rows = result.data.values;
 
   if (!rows || rows.length === 0) {
-    console.error('No data found.');
-    return -99; // TODO
+    throw new Error('debt cell is empty.');
   }
 
   const val = Number(rows[0][0]);

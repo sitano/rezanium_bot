@@ -24,18 +24,24 @@ bot.command('id', (ctx) => {
 });
 
 bot.command('debt', async (ctx) => {
-  const nick = ctx.from.username;
-  const val = await doc.getDebt(nick);
-
   var text = '';
 
-  if (val < 0) {
-    text = `Долг ${val} на дату ${doc.monthDate}`;
-  } else if (val > 0) {
-    text = `Переплата ${val} на дату ${doc.monthDate}`;
-  } else {
-    text = `Долгов нет на дату ${doc.monthDate}`;
-  }
+  const nick = ctx.from.username;
+
+  try {
+    const val = await doc.getDebt(nick);
+
+    if (val < 0) {
+      text = `Долг ${val} на дату ${doc.monthDate}`;
+    } else if (val > 0) {
+      text = `Переплата ${val} на дату ${doc.monthDate}`;
+    } else {
+      text = `Долгов нет на дату ${doc.monthDate}`;
+    }
+  } catch (err) {
+    console.error(`Error getting debt for ${nick}:`, err);
+    text = `Возникла ошибка при получении долга для ${nick}`;
+  };
 
   ctx.reply(text);
 });
