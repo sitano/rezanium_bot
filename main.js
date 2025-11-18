@@ -10,8 +10,10 @@ console.log('Bot started');
 
 const bot = new Telegraf(BOT_TOKEN)
 
-bot.start((ctx) => ctx.reply('Welcome'))
-bot.help((ctx) => ctx.reply('Send me a sticker. Or type /debt to know your debt.'))
+bot.start((ctx) => ctx.reply('Welcome! Type /help to see available commands.'))
+bot.help((ctx) => ctx.reply("Send me a sticker or say hi,\n\
+Or type /debt to get your balance,\n\
+Or type /id to get your Telegram ID."))
 bot.on(message('sticker'), (ctx) => ctx.reply('👍'))
 bot.hears('hi', (ctx) => ctx.reply('Hey there'))
 
@@ -32,11 +34,11 @@ bot.command('debt', async (ctx) => {
     const val = await doc.getDebt(nick);
 
     if (val < 0) {
-      text = `Долг ${val} на дату ${doc.monthDate}`;
+      text = `Долг ${val} на дату ${doc.getMonthDate()}`;
     } else if (val > 0) {
-      text = `Переплата ${val} на дату ${doc.monthDate}`;
+      text = `Переплата ${val} на дату ${doc.getMonthDate()}`;
     } else {
-      text = `Долгов нет на дату ${doc.monthDate}`;
+      text = `Долгов нет на дату ${doc.getMonthDate()}`;
     }
   } catch (err) {
     console.error(`Error getting debt for ${nick}:`, err);
@@ -45,6 +47,8 @@ bot.command('debt', async (ctx) => {
 
   ctx.reply(text);
 });
+
+await doc.loadMaps();
 
 bot.launch()
 

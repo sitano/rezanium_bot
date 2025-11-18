@@ -15,18 +15,20 @@ const TG_NK_COL = "E"; // telegram nickname column
 const TG_COFE_MONTH_ROW_INDEX = "G1"; // current month row index cell
 const TG_COFE_MONTH_DATE_INDEX = "H1"; // current month date index cell
 
+// TODO: move to service account for server use?
+// https://github.com/googleapis/google-api-nodejs-client/
 const auth = await authenticate({
   scopes: SCOPES,
   keyfilePath: CREDENTIALS_PATH,
 });
+
+google.options({auth: auth});
 
 const client = google.sheets({version: 'v4', auth});
 
 var monthRow = 0;
 var monthDate = '';
 var tg2col = {};
-
-await loadMaps();
 
 async function loadMaps() {
   console.log('Loading month row...');
@@ -37,7 +39,7 @@ async function loadMaps() {
   });
 
   monthRow = Number(month_row_req.data.values[0][0]);
-  monthDate = month_row_req.data.values[0][month_row_req.data.values[0].length - 1];
+  monthDate = String(month_row_req.data.values[0][month_row_req.data.values[0].length - 1]);
 
   console.log(`Month row: ${monthRow}, date: ${monthDate}`);
 
@@ -74,18 +76,21 @@ async function getDebt(tg) {
   const col = tg2col[tg];
 
   if (!col) {
-    throw new Error(`tg account is not registered`);
+    throw new Error(`tg account ${tg} is not registered`);
   }
 
+  const range = `${COFE_PAGE}!${col}${monthRow}:${col}${monthRow}`;
   const result = await client.spreadsheets.values.get({
     spreadsheetId: DOC_ID,
-    range: `${COFE_PAGE}!${col}${monthRow}`,
+    range: range,
   });
 
   const rows = result.data.values;
 
+  // TODO: if token expired, it may return empty result?
   if (!rows || rows.length === 0) {
-    throw new Error('debt cell is empty.');
+    const s = JSON.stringify(result, null, 2);
+    throw new Error(`debt cell ${range} is empty: ${s}`);
   }
 
   const val = Number(rows[0][0]);
@@ -93,7 +98,12 @@ async function getDebt(tg) {
   return val;
 }
 
+function getMonthDate() {
+  return monthDate;
+}
+
 export default {
   getDebt,
-  monthDate
+  getMonthDate,
+  loadMaps,
 };
