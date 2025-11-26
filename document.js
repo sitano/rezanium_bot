@@ -30,52 +30,65 @@ var monthRow = 0;
 var monthDate = '';
 var tg2col = {};
 
-async function loadMaps() {
-  console.log('Loading month row...');
+async function loadMaps(month_row = true, mapping = true) {
+  if (month_row) {
+    console.log('Loading month row...');
 
-  const month_row_req = await client.spreadsheets.values.get({
-    spreadsheetId: DOC_ID,
-    range: `${TG_PAGE}!${TG_COFE_MONTH_ROW_INDEX}:${TG_COFE_MONTH_DATE_INDEX}`,
-  });
+    const month_row_req = await client.spreadsheets.values.get({
+      spreadsheetId: DOC_ID,
+      range: `${TG_PAGE}!${TG_COFE_MONTH_ROW_INDEX}:${TG_COFE_MONTH_DATE_INDEX}`,
+    });
 
-  monthRow = Number(month_row_req.data.values[0][0]);
-  monthDate = String(month_row_req.data.values[0][month_row_req.data.values[0].length - 1]);
+    monthRow = Number(month_row_req.data.values[0][0]);
+    monthDate = String(month_row_req.data.values[0][month_row_req.data.values[0].length - 1]);
 
-  console.log(`Month row: ${monthRow}, date: ${monthDate}`);
+    console.log(`Month row: ${monthRow}, date: ${monthDate}`);
+  }
 
-  console.log('Loading telegram to names mapping...');
+  if (mapping) {
+    console.log('Loading telegram to names mapping...');
 
-  const col_ix_req = await client.spreadsheets.values.get({
-    spreadsheetId: DOC_ID,
-    range: `${TG_PAGE}!${TG_IX_COL}1:${TG_IX_COL}${TG_ROWS}`,
-  });
+    const col_ix_req = await client.spreadsheets.values.get({
+      spreadsheetId: DOC_ID,
+      range: `${TG_PAGE}!${TG_IX_COL}1:${TG_IX_COL}${TG_ROWS}`,
+    });
 
-  const nk_req = await client.spreadsheets.values.get({
-    spreadsheetId: DOC_ID,
-    range: `${TG_PAGE}!${TG_NK_COL}1:${TG_NK_COL}${TG_ROWS}`,
-  });
+    const nk_req = await client.spreadsheets.values.get({
+      spreadsheetId: DOC_ID,
+      range: `${TG_PAGE}!${TG_NK_COL}1:${TG_NK_COL}${TG_ROWS}`,
+    });
 
-  col_ix_req.data.values.forEach((row, index) => {
-    if (index >= nk_req.data.values.length) {
-      return;
-    }
+    col_ix_req.data.values.forEach((row, index) => {
+      if (index >= nk_req.data.values.length) {
+        return;
+      }
 
-    const col = row[0];
-    const tg = nk_req.data.values[index][0];
+      const col = row[0];
+      const tg = nk_req.data.values[index][0];
 
-    if (tg && col) {
-      tg2col[tg] = col;
-    }
-  });
+      if (tg && col) {
+        tg2col[tg] = col;
+      }
+    });
+  }
 
-  // TODO: print full name near-by to be able to visually verify correctness
-  console.log("Resolved mapping:", tg2col);
+  return tg2col;
 }
 
-async function getDebt(tg) {
+async function getDebt(tg, retry = 1) {
   const col = tg2col[tg];
 
   if (!col) {
+    if (retry > 0) {
+      if (retry == 1) {
+        console.log(`Telegram nick ${tg} not found in mapping, reloading mapping and retrying...`);
+        const newMap = await loadMaps(true, true);
+        console.log(`New mapping loaded: ${JSON.stringify(newMap)}`);
+      }
+
+      return getDebt(tg, retry - 1);
+    }
+
     throw new Error(`tg account ${tg} is not registered`);
   }
 
@@ -87,8 +100,14 @@ async function getDebt(tg) {
 
   const rows = result.data.values;
 
-  // TODO: if token expired, it may return empty result?
   if (!rows || rows.length === 0) {
+    if (retry > 0) {
+      console.log(`Debt cell ${range} is empty, reloading current date row and retrying...`);
+      await loadMaps(true, false);
+
+      return getDebt(tg, retry - 1);
+    }
+
     const s = JSON.stringify(result, null, 2);
     throw new Error(`debt cell ${range} is empty: ${s}`);
   }
@@ -102,8 +121,13 @@ function getMonthDate() {
   return monthDate;
 }
 
+function getMonthRow() {
+  return monthRow;
+}
+
 export default {
   getDebt,
   getMonthDate,
+  getMonthRow,
   loadMaps,
 };
