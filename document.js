@@ -32,8 +32,6 @@ var tg2col = {};
 
 async function loadMaps(month_row = true, mapping = true) {
   if (month_row) {
-    console.log('Loading month row...');
-
     const month_row_req = await client.spreadsheets.values.get({
       spreadsheetId: DOC_ID,
       range: `${TG_PAGE}!${TG_COFE_MONTH_ROW_INDEX}:${TG_COFE_MONTH_DATE_INDEX}`,
@@ -46,8 +44,6 @@ async function loadMaps(month_row = true, mapping = true) {
   }
 
   if (mapping) {
-    console.log('Loading telegram to names mapping...');
-
     const col_ix_req = await client.spreadsheets.values.get({
       spreadsheetId: DOC_ID,
       range: `${TG_PAGE}!${TG_IX_COL}1:${TG_IX_COL}${TG_ROWS}`,
